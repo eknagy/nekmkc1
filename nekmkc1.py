@@ -25,7 +25,7 @@ from zoneinfo import ZoneInfo
 # Check arguments
 if len(sys.argv)<2:
 	print("Usage: %s INPUT_FILE MUSICIAN_NAME" % sys.argv[0]);
-	print("INPUT_FILE is a csv, second row contains musician names in uppercase, 'x' or 'X' in that column denotes an assignment.")
+	print("INPUT_FILE is a csv, second row contains musician names in uppercase, 'x' or 'X' or 'Sz' in that column denotes an assignment.")
 	print("All other rows with empty first column should be ignored until a non-empty first column (date) is found.")
 	print("Column 0 is date (if empty, use previous value), column 3/4 is from/to, 5-7 are details.")
 	exit(-1)
@@ -82,13 +82,14 @@ with open(input_file, mode='r') as infile:
 				# If we have a valid date and an X in the column with the musician's name, this line is a play in which the musician performs, so we'll export it
 				if line[target_column].strip()=='':
 					pass # No performance in this play
-				elif line[target_column].upper().strip()=='X':
+				elif line[target_column].upper().strip() in ['X', 'SZ']:
 					# The Hungarian Opera is located in Budapest and Hungary is a single-timezone country, so times are of course local times.
 					fromTS=datetime.strptime("%s %s" % (targetdate.strftime("%Y/%B/%d"), line[3]), "%Y/%B/%d %H:%M").replace(tzinfo=ZoneInfo("Europe/Budapest"))
 					toTS=datetime.strptime("%s %s" % (targetdate.strftime("%Y/%B/%d"), line[4]), "%Y/%B/%d %H:%M").replace(tzinfo=ZoneInfo("Europe/Budapest"))
 					# Due to daylight savings, we have to check if the target local date is in CET or in CEST - the iCalendar format prefers Zulu time / UTC
 					fromTS_UTC=datetime.strptime("%s %s" % (targetdate.strftime("%Y/%B/%d"), line[3]), "%Y/%B/%d %H:%M").replace(tzinfo=ZoneInfo("UTC"))
 					# We'll get the offset of the two timezones - but due to precision issues, this has values like "-1 day +22:59:9999995", so...
+					# print("DEBUG: %s %s" % (line[3], fromTS_UTC))
 					timezone_offset=round((fromTS-fromTS_UTC).total_seconds()/60) # ... we round and convert it to minutes, and now has values like '-60' or '-120'
 					fromTS+=timedelta(minutes=timezone_offset) # TS: timestamp
 					toTS+=timedelta(minutes=timezone_offset)
@@ -109,7 +110,7 @@ with open(input_file, mode='r') as infile:
 						(uid, exportZ, fromZ, toZ, line[7], line[6], location))
 					event_count+=1
 				else:
-					print("FATAL! Item expected to be either '' or 'X' but is '%s', aborting..." % item)
+					print("FATAL! Item expected to be either '' or 'X' but is '%s' or '%s', aborting..." % (item, line[target_column]))
 					exit(-5)
 		outfile.write("END:VCALENDAR\r\n")
 		print("Written %d events to '%s'." % (event_count, output_file))
